@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import NewsCard from "../components/NewsCard";
+import NewsCardSkeleton from "../components/NewsCardSkeleton";
 import CategoryTabs from "../components/CategoryTabs";
 import BottomNav from "../components/BottomNav";
 import SearchScreen from "../components/SearchScreen";
@@ -28,19 +29,17 @@ export default function Home() {
   /* ---------------- FETCH REAL NEWS (GNEWS) ---------------- */
 
   useEffect(() => {
-  setLoading(true);
+    setLoading(true);
 
-  fetch(`/api/news?category=${encodeURIComponent(category)}`)
-    .then((res) => res.json())
-    .then((data) => {
-      setNews(Array.isArray(data) ? data : []);
-      setIndex(0);
-      setLoading(false);
-    })
-    .catch(() => setLoading(false));
-}, [category]);
-
-
+    fetch(`/api/news?category=${encodeURIComponent(category)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setNews(Array.isArray(data) ? data : []);
+        setIndex(0);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [category]);
 
   /* --------- OPEN BOOKMARKS FROM PROFILE EVENT ---------- */
 
@@ -106,12 +105,10 @@ export default function Home() {
       >
         {/* HOME / NEWS FEED */}
         {nav === "home" && (
-          loading ? (
-            <div className="h-full flex items-center justify-center text-gray-400">
-              Loading news…
-            </div>
+          loading || !news[index] ? (
+            <NewsCardSkeleton />
           ) : (
-            news[index] && <NewsCard {...news[index]} />
+            <NewsCard {...news[index]} />
           )
         )}
 

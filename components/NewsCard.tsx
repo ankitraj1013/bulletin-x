@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toggleBookmark, isBookmarked } from "../utils/bookmarks";
+import { saveSignal } from "@/lib/feedSignals";
 
 type Props = {
-  id: string;        // 🔑 stable (url-based)
+  id: string;
   image: string;
   headline: string;
   summary: string;
   source: string;
   url: string;
+  category?: string;
 };
 
 export default function NewsCard({
@@ -19,19 +21,42 @@ export default function NewsCard({
   summary,
   source,
   url,
+  category = "general",
 }: Props) {
   const [saved, setSaved] = useState(false);
+  const viewStartRef = useRef<number | null>(null);
+
+  /* ---------------- INIT ---------------- */
 
   useEffect(() => {
     setSaved(isBookmarked(id));
   }, [id]);
 
+  /* ---------------- DWELL TIME ---------------- */
+
+  useEffect(() => {
+    viewStartRef.current = Date.now();
+
+    return () => {
+      if (!viewStartRef.current) return;
+
+      const dwellTime = Date.now() - viewStartRef.current;
+
+      saveSignal({
+        articleId: id,
+        category,
+        source,
+        viewedAt: Date.now(),
+        dwellTime,
+        skipped: dwellTime < 1200,
+      });
+    };
+  }, [id, category, source]);
+
   /* ---------------- BOOKMARK ---------------- */
 
-  const handleBookmark = (
-    e: React.MouseEvent | React.TouchEvent
-  ) => {
-    e.stopPropagation(); // prevent swipe
+  const handleBookmark = (e: any) => {
+    e.stopPropagation();
 
     toggleBookmark({
       id,
@@ -42,20 +67,27 @@ export default function NewsCard({
       url,
     });
 
-    setSaved((prev) => !prev);
+    setSaved((p) => !p);
+
+    saveSignal({
+      articleId: id,
+      category,
+      source,
+      viewedAt: Date.now(),
+      dwellTime: 5000,
+      bookmarked: true,
+    });
+
     navigator.vibrate?.(10);
   };
 
-  /* ---------------- SHARE (INSHORTS-STYLE) ---------------- */
+  /* ---------------- SHARE ---------------- */
 
-  const handleShare = async (
-    e: React.MouseEvent | React.TouchEvent
-  ) => {
+  const handleShare = async (e: any) => {
     e.stopPropagation();
 
     let shared = false;
 
-    // 1️⃣ Try native system share (apps list)
     if (navigator.share) {
       try {
         await navigator.share({
@@ -64,50 +96,52 @@ export default function NewsCard({
           url,
         });
         shared = true;
-      } catch {
-        // user cancelled or OS blocked
-      }
+      } catch {}
     }
 
-    // 2️⃣ Silent fallback (NO alerts, NO blocking UX)
     if (!shared) {
       try {
-        const textarea = document.createElement("textarea");
-        textarea.value = url;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-
-        document.body.appendChild(textarea);
-        textarea.select();
+        const t = document.createElement("textarea");
+        t.value = url;
+        t.style.position = "fixed";
+        t.style.opacity = "0";
+        document.body.appendChild(t);
+        t.select();
         document.execCommand("copy");
-        document.body.removeChild(textarea);
-
-        navigator.vibrate?.(5); // subtle feedback
-      } catch {
-        // intentionally silent
-      }
+        document.body.removeChild(t);
+        navigator.vibrate?.(5);
+      } catch {}
     }
   };
 
   /* ---------------- LEARN MORE ---------------- */
 
-  const handleLearnMore = (
-    e: React.MouseEvent | React.TouchEvent
-  ) => {
+  const handleLearnMore = (e: any) => {
     e.stopPropagation();
+
+    saveSignal({
+      articleId: id,
+      category,
+      source,
+      viewedAt: Date.now(),
+      dwellTime: 8000,
+      liked: true,
+    });
+
     window.open(url, "_blank");
   };
 
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="h-full w-full bg-white dark:bg-black flex flex-col">
+    <div className="h-full w-full bg-white dark:bg-black flex flex-col news-card-enter">
       {/* Image */}
       <div className="h-56 shrink-0">
         <img
           src={image}
           alt="news"
-          className="h-full w-full object-cover"
+          loading="lazy"
+          className="h-full w-full object-cover transition-opacity duration-300"
         />
       </div>
 
@@ -117,9 +151,7 @@ export default function NewsCard({
           {headline}
         </h2>
 
-        <p className="text-gray-700 dark:text-gray-300">
-          {summary}
-        </p>
+        <p className="text-gray-700 dark:text-gray-300">{summary}</p>
 
         <p className="text-xs text-gray-500 mt-4">
           Source: {source}
@@ -130,7 +162,7 @@ export default function NewsCard({
           <button
             onClick={handleLearnMore}
             onTouchStart={handleLearnMore}
-            className="text-blue-600 dark:text-blue-400 font-semibold"
+            className="text-blue-600 dark:text-blue-400 font-semibold active:scale-95 transition-transform"
           >
             Learn more →
           </button>
@@ -139,6 +171,7 @@ export default function NewsCard({
             <button
               onClick={handleBookmark}
               onTouchStart={handleBookmark}
+              className="active:scale-95 transition-transform"
             >
               {saved ? "✅ Bookmarked" : "🔖 Bookmark"}
             </button>
@@ -146,6 +179,7 @@ export default function NewsCard({
             <button
               onClick={handleShare}
               onTouchStart={handleShare}
+              className="active:scale-95 transition-transform"
             >
               🔗 Share
             </button>
