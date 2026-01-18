@@ -55,7 +55,7 @@ export default function Home() {
     return () => window.removeEventListener("open-bookmarks", open);
   }, []);
 
-  /* ---------------- INSHORTS-STYLE SWIPE ---------------- */
+  /* ---------------- INSHORTS-STYLE SWIPE (FIXED) ---------------- */
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
@@ -90,21 +90,28 @@ export default function Home() {
     const timeDiff = Date.now() - startTime.current;
     const velocity = Math.abs(totalDiff / timeDiff);
 
-    let shouldSwipe =
-      Math.abs(totalDiff) > SWIPE_THRESHOLD ||
-      velocity > VELOCITY_THRESHOLD;
-
-    if (shouldSwipe) {
-      if (totalDiff < 0 && index < news.length - 1) {
-        navigator.vibrate?.(8);
-        setIndex((i) => i + 1);
-      } else if (totalDiff > 0 && index > 0) {
-        navigator.vibrate?.(8);
-        setIndex((i) => i - 1);
-      }
+    // 🔼 Swipe UP → next card (velocity OR distance)
+    if (
+      totalDiff < 0 &&
+      index < news.length - 1 &&
+      (Math.abs(totalDiff) > SWIPE_THRESHOLD ||
+        velocity > VELOCITY_THRESHOLD)
+    ) {
+      navigator.vibrate?.(8);
+      setIndex((i) => i + 1);
     }
 
-    // Hard snap (Inshorts feel)
+    // 🔽 Swipe DOWN → previous card (distance-based)
+    else if (
+      totalDiff > 0 &&
+      index > 0 &&
+      Math.abs(totalDiff) > SWIPE_THRESHOLD
+    ) {
+      navigator.vibrate?.(8);
+      setIndex((i) => i - 1);
+    }
+
+    // Hard snap (always)
     cardRef.current.style.transition =
       `transform ${SNAP_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
     cardRef.current.style.transform = "translateY(0)";
