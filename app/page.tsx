@@ -13,6 +13,10 @@ const TOP_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 56;
 const SWIPE_THRESHOLD = 80;
 
+// Advanced UX constants
+const MAX_PULL = 140;              // rubber-band limit
+const VELOCITY_THRESHOLD = 0.5;    // px/ms
+
 export default function Home() {
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,9 +28,11 @@ export default function Home() {
   >("home");
 
   const startY = useRef<number | null>(null);
+  const lastY = useRef<number | null>(null);
+  const startTime = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  /* ---------------- FETCH REAL NEWS (GNEWS) ---------------- */
+  /* ---------------- FETCH NEWS ---------------- */
 
   useEffect(() => {
     setLoading(true);
@@ -41,7 +47,7 @@ export default function Home() {
       .catch(() => setLoading(false));
   }, [category]);
 
-  /* --------- OPEN BOOKMARKS FROM PROFILE EVENT ---------- */
+  /* --------- OPEN BOOKMARKS FROM PROFILE ---------- */
 
   useEffect(() => {
     const open = () => setNav("bookmarks");
@@ -49,33 +55,80 @@ export default function Home() {
     return () => window.removeEventListener("open-bookmarks", open);
   }, []);
 
-  /* ---------------- SWIPE HANDLERS ---------------- */
+  /* ---------------- ADVANCED SWIPE HANDLERS ---------------- */
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
+    lastY.current = startY.current;
+    startTime.current = Date.now();
+
+    if (cardRef.current) {
+      cardRef.current.style.transition = "none";
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!startY.current || !cardRef.current) return;
-    const diff = e.touches[0].clientY - startY.current;
+
+    const currentY = e.touches[0].clientY;
+    let diff = currentY - startY.current;
+
+    // Rubber-band resistance
+    if (Math.abs(diff) > MAX_PULL) {
+      diff = MAX_PULL * Math.sign(diff);
+    }
+
+    lastY.current = currentY;
     cardRef.current.style.transform = `translateY(${diff}px)`;
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!startY.current || !cardRef.current) return;
+  const handleTouchEnd = () => {
+    if (
+      !startY.current ||
+      !lastY.current ||
+      !startTime.current ||
+      !cardRef.current
+    )
+      return;
 
-    const diff = e.changedTouches[0].clientY - startY.current;
+    const totalDiff = lastY.current - startY.current;
+    const timeDiff = Date.now() - startTime.current;
+    const velocity = Math.abs(totalDiff / timeDiff);
 
-    if (diff < -SWIPE_THRESHOLD && index < news.length - 1) {
-      navigator.vibrate?.(10);
-      setIndex((i) => i + 1);
-    } else if (diff > SWIPE_THRESHOLD && index > 0) {
-      navigator.vibrate?.(10);
-      setIndex((i) => i - 1);
+    let swiped = false;
+
+    // Swipe up
+    if (
+      (totalDiff < -SWIPE_THRESHOLD && velocity > VELOCITY_THRESHOLD) ||
+      totalDiff < -SWIPE_THRESHOLD * 1.2
+    ) {
+      if (index < news.length - 1) {
+        navigator.vibrate?.(10);
+        setIndex((i) => i + 1);
+        swiped = true;
+      }
     }
 
+    // Swipe down
+    if (
+      (totalDiff > SWIPE_THRESHOLD && velocity > VELOCITY_THRESHOLD) ||
+      totalDiff > SWIPE_THRESHOLD * 1.2
+    ) {
+      if (index > 0) {
+        navigator.vibrate?.(10);
+        setIndex((i) => i - 1);
+        swiped = true;
+      }
+    }
+
+    // Snap-back animation
+    cardRef.current.style.transition =
+      "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
     cardRef.current.style.transform = "translateY(0)";
+
     startY.current = null;
+    lastY.current = null;
+    startTime.current = null;
   };
 
   /* ---------------- RENDER ---------------- */
@@ -92,10 +145,9 @@ export default function Home() {
         }}
       />
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT */}
       <div
         ref={cardRef}
-        className="transition-transform duration-150 ease-out"
         style={{
           height: `calc(100vh - ${TOP_BAR_HEIGHT}px - ${BOTTOM_BAR_HEIGHT}px)`,
         }}
@@ -103,14 +155,13 @@ export default function Home() {
         onTouchMove={nav === "home" ? handleTouchMove : undefined}
         onTouchEnd={nav === "home" ? handleTouchEnd : undefined}
       >
-        {/* HOME / NEWS FEED */}
-        {nav === "home" && (
-          loading || !news[index] ? (
+        {/* HOME FEED */}
+        {nav === "home" &&
+          (loading || !news[index] ? (
             <NewsCardSkeleton />
           ) : (
             <NewsCard {...news[index]} />
-          )
-        )}
+          ))}
 
         {/* SEARCH */}
         {nav === "search" && <SearchScreen />}
@@ -124,7 +175,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* BOTTOM NAVIGATION */}
+      {/* BOTTOM NAV */}
       <BottomNav
         active={nav === "bookmarks" ? "profile" : nav}
         onHome={() => {
