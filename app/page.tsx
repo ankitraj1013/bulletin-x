@@ -11,11 +11,11 @@ import BookmarksScreen from "../components/BookmarksScreen";
 
 const TOP_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 56;
-const SWIPE_THRESHOLD = 80;
 
-// Advanced UX constants
-const MAX_PULL = 140;              // rubber-band limit
-const VELOCITY_THRESHOLD = 0.5;    // px/ms
+// Inshorts-style swipe tuning
+const SWIPE_THRESHOLD = 60;        // px
+const VELOCITY_THRESHOLD = 0.35;  // px/ms
+const SNAP_DURATION = 180;        // ms
 
 export default function Home() {
   const [news, setNews] = useState<any[]>([]);
@@ -55,7 +55,7 @@ export default function Home() {
     return () => window.removeEventListener("open-bookmarks", open);
   }, []);
 
-  /* ---------------- ADVANCED SWIPE HANDLERS ---------------- */
+  /* ---------------- INSHORTS-STYLE SWIPE ---------------- */
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
@@ -71,12 +71,7 @@ export default function Home() {
     if (!startY.current || !cardRef.current) return;
 
     const currentY = e.touches[0].clientY;
-    let diff = currentY - startY.current;
-
-    // Rubber-band resistance
-    if (Math.abs(diff) > MAX_PULL) {
-      diff = MAX_PULL * Math.sign(diff);
-    }
+    const diff = currentY - startY.current;
 
     lastY.current = currentY;
     cardRef.current.style.transform = `translateY(${diff}px)`;
@@ -95,35 +90,23 @@ export default function Home() {
     const timeDiff = Date.now() - startTime.current;
     const velocity = Math.abs(totalDiff / timeDiff);
 
-    let swiped = false;
+    let shouldSwipe =
+      Math.abs(totalDiff) > SWIPE_THRESHOLD ||
+      velocity > VELOCITY_THRESHOLD;
 
-    // Swipe up
-    if (
-      (totalDiff < -SWIPE_THRESHOLD && velocity > VELOCITY_THRESHOLD) ||
-      totalDiff < -SWIPE_THRESHOLD * 1.2
-    ) {
-      if (index < news.length - 1) {
-        navigator.vibrate?.(10);
+    if (shouldSwipe) {
+      if (totalDiff < 0 && index < news.length - 1) {
+        navigator.vibrate?.(8);
         setIndex((i) => i + 1);
-        swiped = true;
-      }
-    }
-
-    // Swipe down
-    if (
-      (totalDiff > SWIPE_THRESHOLD && velocity > VELOCITY_THRESHOLD) ||
-      totalDiff > SWIPE_THRESHOLD * 1.2
-    ) {
-      if (index > 0) {
-        navigator.vibrate?.(10);
+      } else if (totalDiff > 0 && index > 0) {
+        navigator.vibrate?.(8);
         setIndex((i) => i - 1);
-        swiped = true;
       }
     }
 
-    // Snap-back animation
+    // Hard snap (Inshorts feel)
     cardRef.current.style.transition =
-      "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
+      `transform ${SNAP_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
     cardRef.current.style.transform = "translateY(0)";
 
     startY.current = null;
