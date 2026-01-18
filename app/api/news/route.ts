@@ -15,10 +15,11 @@ export async function GET() {
   try {
     const res = await fetch(url, {
       headers: {
-        // 🔑 REQUIRED by GNews on Vercel
+        // 🔑 Required for GNews on Vercel / serverless
         "User-Agent": "Bulletin-X/1.0",
+        "Accept": "application/json",
       },
-      cache: "no-store", // avoid stale edge cache
+      cache: "no-store", // avoid stale cache
     });
 
     if (!res.ok) {
@@ -40,12 +41,18 @@ export async function GET() {
           a.source?.name &&
           a.url
       )
-      .map((a: any, index: number) => ({
-        id: index + 1,
+      .map((a: any) => ({
+        // 🔑 STABLE ID → bookmarks & share NEVER break
+        id: a.url,
+
         category: "Bulletin-X",
+
         image: a.image,
+
+        // Inshorts rule
         headline: a.title.split(" ").slice(0, 20).join(" "),
         summary: a.description.split(" ").slice(0, 70).join(" "),
+
         source: a.source.name,
         url: a.url,
       }));
@@ -53,7 +60,7 @@ export async function GET() {
     return NextResponse.json(articles);
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message },
+      { error: err.message || "Failed to fetch news" },
       { status: 500 }
     );
   }

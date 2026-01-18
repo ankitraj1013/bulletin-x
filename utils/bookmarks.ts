@@ -1,19 +1,24 @@
 export type Bookmark = {
-  id: number;
+  id: string; // 🔑 URL
   headline: string;
   summary: string;
   source: string;
   image: string;
+  url: string;
 };
 
 const KEY = "bulletin_x_bookmarks";
 
 export function getBookmarks(): Bookmark[] {
   if (typeof window === "undefined") return [];
-  return JSON.parse(localStorage.getItem(KEY) || "[]");
+  try {
+    return JSON.parse(localStorage.getItem(KEY) || "[]");
+  } catch {
+    return [];
+  }
 }
 
-export function isBookmarked(id: number) {
+export function isBookmarked(id: string) {
   return getBookmarks().some((b) => b.id === id);
 }
 
