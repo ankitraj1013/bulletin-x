@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toggleBookmark, isBookmarked } from "../utils/bookmarks";
 
 type Props = {
-  id: string;   // 🔑 URL-based
+  id: string;        // 🔑 stable (url-based)
   image: string;
   headline: string;
   summary: string;
@@ -26,10 +26,12 @@ export default function NewsCard({
     setSaved(isBookmarked(id));
   }, [id]);
 
+  /* ---------------- BOOKMARK ---------------- */
+
   const handleBookmark = (
     e: React.MouseEvent | React.TouchEvent
   ) => {
-    e.stopPropagation();
+    e.stopPropagation(); // prevent swipe
 
     toggleBookmark({
       id,
@@ -40,16 +42,20 @@ export default function NewsCard({
       url,
     });
 
-    setSaved((s) => !s);
+    setSaved((prev) => !prev);
     navigator.vibrate?.(10);
   };
+
+  /* ---------------- SHARE (INSHORTS-STYLE) ---------------- */
 
   const handleShare = async (
     e: React.MouseEvent | React.TouchEvent
   ) => {
     e.stopPropagation();
 
-    // ✅ Native app list (WhatsApp, Insta, etc.)
+    let shared = false;
+
+    // 1️⃣ Try native system share (apps list)
     if (navigator.share) {
       try {
         await navigator.share({
@@ -57,56 +63,79 @@ export default function NewsCard({
           text: summary,
           url,
         });
-        return;
+        shared = true;
       } catch {
-        // user cancelled → fallback
+        // user cancelled or OS blocked
       }
     }
 
-    // ✅ Universal mobile fallback
-    try {
-      const textarea = document.createElement("textarea");
-      textarea.value = url;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
+    // 2️⃣ Silent fallback (NO alerts, NO blocking UX)
+    if (!shared) {
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = url;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
 
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
 
-      alert("Link copied to clipboard");
-    } catch {
-      alert("Unable to share");
+        navigator.vibrate?.(5); // subtle feedback
+      } catch {
+        // intentionally silent
+      }
     }
   };
 
+  /* ---------------- LEARN MORE ---------------- */
+
+  const handleLearnMore = (
+    e: React.MouseEvent | React.TouchEvent
+  ) => {
+    e.stopPropagation();
+    window.open(url, "_blank");
+  };
+
+  /* ---------------- UI ---------------- */
+
   return (
-    <div className="h-full bg-white dark:bg-black flex flex-col">
+    <div className="h-full w-full bg-white dark:bg-black flex flex-col">
+      {/* Image */}
       <div className="h-56 shrink-0">
-        <img src={image} className="h-full w-full object-cover" />
+        <img
+          src={image}
+          alt="news"
+          className="h-full w-full object-cover"
+        />
       </div>
 
+      {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        <h2 className="font-bold text-lg mb-3">{headline}</h2>
-        <p className="text-gray-700 dark:text-gray-300">{summary}</p>
+        <h2 className="font-bold text-lg mb-3 text-black dark:text-white">
+          {headline}
+        </h2>
+
+        <p className="text-gray-700 dark:text-gray-300">
+          {summary}
+        </p>
 
         <p className="text-xs text-gray-500 mt-4">
           Source: {source}
         </p>
 
+        {/* Actions */}
         <div className="mt-3 flex justify-between items-center">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(url, "_blank");
-            }}
-            className="text-blue-600 font-semibold"
+            onClick={handleLearnMore}
+            onTouchStart={handleLearnMore}
+            className="text-blue-600 dark:text-blue-400 font-semibold"
           >
             Learn more →
           </button>
 
-          <div className="flex gap-4 text-sm">
+          <div className="flex gap-4 text-sm font-medium">
             <button
               onClick={handleBookmark}
               onTouchStart={handleBookmark}

@@ -28,14 +28,18 @@ export default function Home() {
   /* ---------------- FETCH REAL NEWS (GNEWS) ---------------- */
 
   useEffect(() => {
-  fetch("/api/news")
+  setLoading(true);
+
+  fetch(`/api/news?category=${encodeURIComponent(category)}`)
     .then((res) => res.json())
     .then((data) => {
       setNews(Array.isArray(data) ? data : []);
+      setIndex(0);
       setLoading(false);
     })
     .catch(() => setLoading(false));
-}, []);
+}, [category]);
+
 
 
   /* --------- OPEN BOOKMARKS FROM PROFILE EVENT ---------- */
