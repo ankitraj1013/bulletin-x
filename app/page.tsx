@@ -13,19 +13,16 @@ const TOP_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 56;
 
 // Inshorts-style swipe tuning
-const SWIPE_THRESHOLD = 60;        // px
-const VELOCITY_THRESHOLD = 0.35;  // px/ms
-const SNAP_DURATION = 180;        // ms
+const SWIPE_THRESHOLD = 60;
+const VELOCITY_THRESHOLD = 0.35;
+const SNAP_DURATION = 180;
 
 export default function Home() {
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [category, setCategory] = useState("Bulletin-X");
   const [index, setIndex] = useState(0);
-  const [nav, setNav] = useState<
-    "home" | "search" | "profile" | "bookmarks"
-  >("home");
+  const [nav, setNav] = useState<"home" | "search" | "profile" | "bookmarks">("home");
 
   const startY = useRef<number | null>(null);
   const lastY = useRef<number | null>(null);
@@ -36,7 +33,6 @@ export default function Home() {
 
   useEffect(() => {
     setLoading(true);
-
     fetch(`/api/news?category=${encodeURIComponent(category)}`)
       .then((res) => res.json())
       .then((data) => {
@@ -47,85 +43,56 @@ export default function Home() {
       .catch(() => setLoading(false));
   }, [category]);
 
-  /* --------- OPEN BOOKMARKS FROM PROFILE ---------- */
-
-  useEffect(() => {
-    const open = () => setNav("bookmarks");
-    window.addEventListener("open-bookmarks", open);
-    return () => window.removeEventListener("open-bookmarks", open);
-  }, []);
-
-  /* ---------------- INSHORTS-STYLE SWIPE (FIXED) ---------------- */
+  /* ---------------- SWIPE HANDLERS (OVERLAY) ---------------- */
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
     lastY.current = startY.current;
     startTime.current = Date.now();
-
-    if (cardRef.current) {
-      cardRef.current.style.transition = "none";
-    }
+    if (cardRef.current) cardRef.current.style.transition = "none";
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!startY.current || !cardRef.current) return;
-
-    const currentY = e.touches[0].clientY;
-    const diff = currentY - startY.current;
-
-    lastY.current = currentY;
+    const y = e.touches[0].clientY;
+    const diff = y - startY.current;
+    lastY.current = y;
     cardRef.current.style.transform = `translateY(${diff}px)`;
   };
 
   const handleTouchEnd = () => {
-    if (
-      !startY.current ||
-      !lastY.current ||
-      !startTime.current ||
-      !cardRef.current
-    )
-      return;
+    if (!startY.current || !lastY.current || !startTime.current || !cardRef.current) return;
 
-    const totalDiff = lastY.current - startY.current;
-    const timeDiff = Date.now() - startTime.current;
-    const velocity = Math.abs(totalDiff / timeDiff);
+    const diff = lastY.current - startY.current;
+    const velocity = Math.abs(diff / (Date.now() - startTime.current));
 
-    // 🔼 Swipe UP → next card (velocity OR distance)
+    // UP → next
     if (
-      totalDiff < 0 &&
+      diff < 0 &&
       index < news.length - 1 &&
-      (Math.abs(totalDiff) > SWIPE_THRESHOLD ||
-        velocity > VELOCITY_THRESHOLD)
+      (Math.abs(diff) > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD)
     ) {
       navigator.vibrate?.(8);
       setIndex((i) => i + 1);
     }
 
-    // 🔽 Swipe DOWN → previous card (distance-based)
-    else if (
-      totalDiff > 0 &&
-      index > 0 &&
-      Math.abs(totalDiff) > SWIPE_THRESHOLD
-    ) {
+    // DOWN → previous
+    else if (diff > 0 && index > 0 && Math.abs(diff) > SWIPE_THRESHOLD) {
       navigator.vibrate?.(8);
       setIndex((i) => i - 1);
     }
 
-    // Hard snap (always)
     cardRef.current.style.transition =
       `transform ${SNAP_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
     cardRef.current.style.transform = "translateY(0)";
 
-    startY.current = null;
-    lastY.current = null;
-    startTime.current = null;
+    startY.current = lastY.current = startTime.current = null;
   };
 
   /* ---------------- RENDER ---------------- */
 
   return (
     <main className="h-screen bg-gray-100 dark:bg-black">
-      {/* TOP CATEGORY BAR */}
       <CategoryTabs
         active={category}
         onChange={(c) => {
@@ -135,37 +102,42 @@ export default function Home() {
         }}
       />
 
-      {/* MAIN CONTENT */}
+      {/* CLIP AREA */}
       <div
-        ref={cardRef}
         style={{
           height: `calc(100vh - ${TOP_BAR_HEIGHT}px - ${BOTTOM_BAR_HEIGHT}px)`,
+          overflow: "hidden",
         }}
-        onTouchStart={nav === "home" ? handleTouchStart : undefined}
-        onTouchMove={nav === "home" ? handleTouchMove : undefined}
-        onTouchEnd={nav === "home" ? handleTouchEnd : undefined}
       >
-        {/* HOME FEED */}
-        {nav === "home" &&
-          (loading || !news[index] ? (
-            <NewsCardSkeleton />
-          ) : (
-            <NewsCard {...news[index]} />
-          ))}
+        <div className="relative h-full">
+          {/* GESTURE OVERLAY (captures all swipes) */}
+          {nav === "home" && (
+            <div
+              className="absolute inset-0 z-10"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            />
+          )}
 
-        {/* SEARCH */}
-        {nav === "search" && <SearchScreen />}
+          {/* CARD LAYER */}
+          <div ref={cardRef} className="h-full will-change-transform">
+            {nav === "home" &&
+              (loading || !news[index] ? (
+                <NewsCardSkeleton />
+              ) : (
+                <NewsCard {...news[index]} />
+              ))}
 
-        {/* PROFILE */}
-        {nav === "profile" && <ProfileScreen />}
-
-        {/* BOOKMARKS */}
-        {nav === "bookmarks" && (
-          <BookmarksScreen onBack={() => setNav("profile")} />
-        )}
+            {nav === "search" && <SearchScreen />}
+            {nav === "profile" && <ProfileScreen />}
+            {nav === "bookmarks" && (
+              <BookmarksScreen onBack={() => setNav("profile")} />
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* BOTTOM NAV */}
       <BottomNav
         active={nav === "bookmarks" ? "profile" : nav}
         onHome={() => {
