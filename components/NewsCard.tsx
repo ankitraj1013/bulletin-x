@@ -32,7 +32,7 @@ export default function NewsCard({
     setSaved(isBookmarked(id));
   }, [id]);
 
-  /* ---------------- DWELL TIME ---------------- */
+  /* ---------------- DWELL TIME TRACKING ---------------- */
 
   useEffect(() => {
     viewStartRef.current = Date.now();
@@ -55,7 +55,9 @@ export default function NewsCard({
 
   /* ---------------- BOOKMARK ---------------- */
 
-  const handleBookmark = (e: any) => {
+  const handleBookmark = (
+    e: React.MouseEvent | React.TouchEvent
+  ) => {
     e.stopPropagation();
 
     toggleBookmark({
@@ -67,7 +69,7 @@ export default function NewsCard({
       url,
     });
 
-    setSaved((p) => !p);
+    setSaved((prev) => !prev);
 
     saveSignal({
       articleId: id,
@@ -83,7 +85,9 @@ export default function NewsCard({
 
   /* ---------------- SHARE ---------------- */
 
-  const handleShare = async (e: any) => {
+  const handleShare = async (
+    e: React.MouseEvent | React.TouchEvent
+  ) => {
     e.stopPropagation();
 
     let shared = false;
@@ -116,7 +120,9 @@ export default function NewsCard({
 
   /* ---------------- LEARN MORE ---------------- */
 
-  const handleLearnMore = (e: any) => {
+  const handleLearnMore = (
+    e: React.MouseEvent | React.TouchEvent
+  ) => {
     e.stopPropagation();
 
     saveSignal({
@@ -134,30 +140,32 @@ export default function NewsCard({
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="h-full w-full bg-white dark:bg-black flex flex-col news-card-enter">
-      {/* Image */}
+    <div className="h-full w-full bg-white dark:bg-black flex flex-col select-none">
+      {/* IMAGE */}
       <div className="h-56 shrink-0">
         <img
           src={image}
           alt="news"
           loading="lazy"
-          className="h-full w-full object-cover transition-opacity duration-300"
+          className="h-full w-full object-cover"
         />
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      {/* CONTENT (NO INNER SCROLL — FULL CARD SWIPE) */}
+      <div className="flex-1 px-4 py-3">
         <h2 className="font-bold text-lg mb-3 text-black dark:text-white">
           {headline}
         </h2>
 
-        <p className="text-gray-700 dark:text-gray-300">{summary}</p>
+        <p className="text-gray-700 dark:text-gray-300">
+          {summary}
+        </p>
 
         <p className="text-xs text-gray-500 mt-4">
           Source: {source}
         </p>
 
-        {/* Actions */}
+        {/* ACTIONS */}
         <div className="mt-3 flex justify-between items-center">
           <button
             onClick={handleLearnMore}
