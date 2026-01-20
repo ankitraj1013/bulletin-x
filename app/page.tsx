@@ -24,8 +24,10 @@ export default function Home() {
 
   const startY = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const parallaxRef = useRef<HTMLDivElement>(null);
 
   const current = news[index];
+  const next = news[index + 1];
 
   /* ---------------- FETCH NEWS ---------------- */
 
@@ -72,6 +74,11 @@ export default function Home() {
     cardRef.current.style.transform =
       `translateY(${diff}px) scale(${scale})`;
     cardRef.current.style.boxShadow = STACK_SHADOW;
+
+    if (parallaxRef.current) {
+      parallaxRef.current.style.transform =
+        `translateY(${diff * 0.12}px)`;
+    }
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -90,6 +97,10 @@ export default function Home() {
     cardRef.current.style.transform = "translateY(0) scale(1)";
     cardRef.current.style.boxShadow = "none";
 
+    if (parallaxRef.current) {
+      parallaxRef.current.style.transform = "translateY(0)";
+    }
+
     startY.current = null;
   };
 
@@ -97,7 +108,6 @@ export default function Home() {
 
   return (
     <main className="h-screen bg-gray-100 dark:bg-black">
-      {/* CATEGORY TABS */}
       <CategoryTabs
         active={category}
         onChange={(c) => {
@@ -116,15 +126,26 @@ export default function Home() {
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        className="relative overflow-hidden"
       >
-        <div ref={cardRef} className="h-full">
-          {loading || !current ? (
-            <div className="h-full flex items-center justify-center text-gray-400">
-              Loading…
-            </div>
-          ) : (
-            <NewsCard {...current} />
-          )}
+        {/* PEEK CARD */}
+        {next && (
+          <div className="absolute inset-0 peek-card pointer-events-none">
+            <NewsCard {...next} />
+          </div>
+        )}
+
+        {/* ACTIVE CARD */}
+        <div ref={cardRef} className="absolute inset-0">
+          <div ref={parallaxRef} className="h-full">
+            {loading || !current ? (
+              <div className="h-full flex items-center justify-center text-gray-400">
+                Loading…
+              </div>
+            ) : (
+              <NewsCard {...current} />
+            )}
+          </div>
         </div>
       </div>
 
@@ -167,7 +188,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* BOTTOM NAV */}
       <BottomNav />
     </main>
   );

@@ -7,13 +7,13 @@ export default function NewsCard({
   source,
 }: any) {
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-black">
+    <div className="h-full flex flex-col bg-white dark:bg-black fade-card">
       <div className="flex-1 px-3 py-1">
-        <div className="h-56 mb-3">
+        <div className="h-56 mb-3 overflow-hidden">
           <img
             src={image}
             alt="news"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover parallax-image"
           />
         </div>
 
