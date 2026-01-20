@@ -68,13 +68,26 @@ export default function Home() {
 
     const scale = Math.max(
       STACK_SCALE_MIN,
-      1 - Math.abs(diff) / 1200
+      1 - Math.abs(diff) / 2000
     );
 
+    // 🔥 MEMES DETECTION (ROBUST)
+    const isMemes = category.toLowerCase().includes("meme");
+
+    // 🔥 STRONGER, VISIBLE TILT (±3deg)
+    const tilt = isMemes
+      ? Math.max(-3, Math.min(3, diff / 100))
+      : 0;
+
+    // 🔥 KEY FIX: transform-origin for visible rotation
+    cardRef.current.style.transformOrigin = "center bottom";
+
+    // MAIN swipe (unchanged physics)
     cardRef.current.style.transform =
-      `translateY(${diff}px) scale(${scale})`;
+      `translateY(${diff}px) scale(${scale}) rotate(${tilt}deg)`;
     cardRef.current.style.boxShadow = STACK_SHADOW;
 
+    // PARALLAX (visual only)
     if (parallaxRef.current) {
       parallaxRef.current.style.transform =
         `translateY(${diff * 0.12}px)`;
@@ -94,7 +107,9 @@ export default function Home() {
 
     cardRef.current.style.transition =
       "transform 180ms cubic-bezier(0.25,0.46,0.45,0.94)";
-    cardRef.current.style.transform = "translateY(0) scale(1)";
+    cardRef.current.style.transformOrigin = "center center";
+    cardRef.current.style.transform =
+      "translateY(0) scale(1) rotate(0deg)";
     cardRef.current.style.boxShadow = "none";
 
     if (parallaxRef.current) {
@@ -116,8 +131,8 @@ export default function Home() {
         }}
       />
 
-      {/* NEWS CARD AREA */}
       <div
+        className="relative overflow-hidden"
         style={{
           height: `calc(100vh - ${
             TOP_BAR_HEIGHT + ACTION_BAR_HEIGHT + BOTTOM_BAR_HEIGHT
@@ -126,7 +141,6 @@ export default function Home() {
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        className="relative overflow-hidden"
       >
         {/* PEEK CARD */}
         {next && (
@@ -149,7 +163,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* FIXED ACTION BAR */}
+      {/* ACTION BAR */}
       {current && (
         <div
           className="fixed left-0 right-0 bg-white dark:bg-black px-4 flex justify-between items-center z-40"
