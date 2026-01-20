@@ -9,7 +9,11 @@ import { toggleBookmark, isBookmarked } from "../utils/bookmarks";
 const TOP_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 56;
 const ACTION_BAR_HEIGHT = 48;
+
+// STACK animation tuning
 const SWIPE_THRESHOLD = 60;
+const STACK_SCALE_MIN = 0.96;
+const STACK_SHADOW = "0 20px 40px rgba(0,0,0,0.15)";
 
 export default function Home() {
   const [news, setNews] = useState<any[]>([]);
@@ -45,14 +49,34 @@ export default function Home() {
     }
   }, [current?.id]);
 
-  /* ---------------- SWIPE ---------------- */
+  /* ---------------- STACK SWIPE ---------------- */
 
   const onTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
+    if (cardRef.current) {
+      cardRef.current.style.transition = "none";
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!startY.current || !cardRef.current) return;
+
+    const y = e.touches[0].clientY;
+    const diff = y - startY.current;
+
+    const scale = Math.max(
+      STACK_SCALE_MIN,
+      1 - Math.abs(diff) / 1200
+    );
+
+    cardRef.current.style.transform =
+      `translateY(${diff}px) scale(${scale})`;
+    cardRef.current.style.boxShadow = STACK_SHADOW;
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (!startY.current) return;
+    if (!startY.current || !cardRef.current) return;
+
     const diff = e.changedTouches[0].clientY - startY.current;
 
     if (diff < -SWIPE_THRESHOLD && index < news.length - 1) {
@@ -61,11 +85,19 @@ export default function Home() {
       setIndex((i) => i - 1);
     }
 
+    cardRef.current.style.transition =
+      "transform 180ms cubic-bezier(0.25,0.46,0.45,0.94)";
+    cardRef.current.style.transform = "translateY(0) scale(1)";
+    cardRef.current.style.boxShadow = "none";
+
     startY.current = null;
   };
 
+  /* ---------------- RENDER ---------------- */
+
   return (
     <main className="h-screen bg-gray-100 dark:bg-black">
+      {/* CATEGORY TABS */}
       <CategoryTabs
         active={category}
         onChange={(c) => {
@@ -74,12 +106,15 @@ export default function Home() {
         }}
       />
 
-      {/* CONTENT AREA */}
+      {/* NEWS CARD AREA */}
       <div
         style={{
-          height: `calc(100vh - ${TOP_BAR_HEIGHT + BOTTOM_BAR_HEIGHT + ACTION_BAR_HEIGHT}px)`,
+          height: `calc(100vh - ${
+            TOP_BAR_HEIGHT + ACTION_BAR_HEIGHT + BOTTOM_BAR_HEIGHT
+          }px)`,
         }}
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
         <div ref={cardRef} className="h-full">
@@ -96,7 +131,7 @@ export default function Home() {
       {/* FIXED ACTION BAR */}
       {current && (
         <div
-          className="fixed left-0 right-0 bg-white dark:bg-black px-4 flex justify-between items-center"
+          className="fixed left-0 right-0 bg-white dark:bg-black px-4 flex justify-between items-center z-40"
           style={{
             height: ACTION_BAR_HEIGHT,
             bottom: BOTTOM_BAR_HEIGHT,
@@ -132,6 +167,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* BOTTOM NAV */}
       <BottomNav />
     </main>
   );
