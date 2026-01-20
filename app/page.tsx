@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
 import NewsCard from "../components/NewsCard";
 import CategoryTabs from "../components/CategoryTabs";
 import BottomNav from "../components/BottomNav";
@@ -16,6 +18,8 @@ const STACK_SCALE_MIN = 0.96;
 const STACK_SHADOW = "0 20px 40px rgba(0,0,0,0.15)";
 
 export default function Home() {
+  const router = useRouter();
+
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState("Bulletin-X");
@@ -68,26 +72,21 @@ export default function Home() {
 
     const scale = Math.max(
       STACK_SCALE_MIN,
-      1 - Math.abs(diff) / 2000
+      1 - Math.abs(diff) / 1200
     );
 
-    // 🔥 MEMES DETECTION (ROBUST)
+    // Memes-only tilt
     const isMemes = category.toLowerCase().includes("meme");
-
-    // 🔥 STRONGER, VISIBLE TILT (±3deg)
     const tilt = isMemes
       ? Math.max(-3, Math.min(3, diff / 100))
       : 0;
 
-    // 🔥 KEY FIX: transform-origin for visible rotation
     cardRef.current.style.transformOrigin = "center bottom";
-
-    // MAIN swipe (unchanged physics)
     cardRef.current.style.transform =
       `translateY(${diff}px) scale(${scale}) rotate(${tilt}deg)`;
     cardRef.current.style.boxShadow = STACK_SHADOW;
 
-    // PARALLAX (visual only)
+    // Parallax
     if (parallaxRef.current) {
       parallaxRef.current.style.transform =
         `translateY(${diff * 0.12}px)`;
@@ -123,6 +122,7 @@ export default function Home() {
 
   return (
     <main className="h-screen bg-gray-100 dark:bg-black">
+      {/* CATEGORY TABS */}
       <CategoryTabs
         active={category}
         onChange={(c) => {
@@ -131,8 +131,9 @@ export default function Home() {
         }}
       />
 
+      {/* NEWS CARD AREA */}
       <div
-        className="relative overflow-hidden"
+        className="relative overflow-hidden pointer-events-none"
         style={{
           height: `calc(100vh - ${
             TOP_BAR_HEIGHT + ACTION_BAR_HEIGHT + BOTTOM_BAR_HEIGHT
@@ -150,7 +151,10 @@ export default function Home() {
         )}
 
         {/* ACTIVE CARD */}
-        <div ref={cardRef} className="absolute inset-0">
+        <div
+          ref={cardRef}
+          className="absolute inset-0 pointer-events-auto"
+        >
           <div ref={parallaxRef} className="h-full">
             {loading || !current ? (
               <div className="h-full flex items-center justify-center text-gray-400">
@@ -202,7 +206,13 @@ export default function Home() {
         </div>
       )}
 
-      <BottomNav />
+      {/* ✅ BOTTOM NAV — PROPERLY WIRED */}
+      <BottomNav
+        active="home"
+        onHome={() => router.push("/")}
+        onSearch={() => router.push("/search")}
+        onProfile={() => router.push("/profile")}
+      />
     </main>
   );
 }
