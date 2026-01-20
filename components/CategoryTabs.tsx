@@ -1,41 +1,44 @@
 "use client";
 
 const categories = [
-  "Bulletin-X",
-  "Memes",
-  "Trending",
-  "Sports",
-  "Global",
-  "Tech",
-  "Entertainment",
-];
+  { label: "Bulletin-X", value: "Bulletin-X" },
+  { label: "Trending", value: "trending" },
+  { label: "Memes", value: "memes" },
+  { label: "World", value: "world" },
+  { label: "Business", value: "business" },
+  { label: "Technology", value: "technology" },
+  { label: "Sports", value: "sports" },
+  { label: "Entertainment", value: "entertainment" },
+  { label: "Health", value: "health" },
+  { label: "Science", value: "science" },
+  ];
 
-type Props = {
+export default function CategoryTabs({
+  active,
+  onChange,
+}: {
   active: string;
-  onChange: (category: string) => void;
-};
-
-export default function CategoryTabs({ active, onChange }: Props) {
+  onChange: (c: string) => void;
+}) {
   return (
-    <div className="sticky top-0 z-50 bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800">
-      <div className="flex overflow-x-auto gap-5 px-4 py-3">
-        {categories.map((cat) => {
-          const isActive = active === cat;
-          return (
-            <button
-              key={cat}
-              onClick={() => onChange(cat)}
-              className={`whitespace-nowrap text-sm font-semibold pb-1 ${
-                isActive
-                  ? "text-black dark:text-white border-b-2 border-black dark:border-white"
-                  : "text-gray-400"
+    <div className="flex gap-2 px-1 py-2 overflow-x-auto bg-white dark:bg-black">
+      {categories.map((c) => {
+        const selected = active === c.value;
+        return (
+          <button
+            key={c.value}
+            onClick={() => onChange(c.value)}
+            className={`px-2 py-1 rounded-full text-sm whitespace-nowrap transition-all
+              ${
+                selected
+                  ? "bg-blue-600 text-white font-semibold"
+                  : "text-gray-500 dark:text-gray-400"
               }`}
-            >
-              {cat}
-            </button>
-          );
-        })}
-      </div>
+          >
+            {c.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

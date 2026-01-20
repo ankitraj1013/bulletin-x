@@ -2,32 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 import NewsCard from "../components/NewsCard";
-import NewsCardSkeleton from "../components/NewsCardSkeleton";
 import CategoryTabs from "../components/CategoryTabs";
 import BottomNav from "../components/BottomNav";
-import SearchScreen from "../components/SearchScreen";
-import ProfileScreen from "../components/ProfileScreen";
-import BookmarksScreen from "../components/BookmarksScreen";
+import { toggleBookmark, isBookmarked } from "../utils/bookmarks";
 
 const TOP_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 56;
-
-// Inshorts-style swipe tuning
+const ACTION_BAR_HEIGHT = 48;
 const SWIPE_THRESHOLD = 60;
-const VELOCITY_THRESHOLD = 0.35;
-const SNAP_DURATION = 180;
 
 export default function Home() {
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState("Bulletin-X");
   const [index, setIndex] = useState(0);
-  const [nav, setNav] = useState<"home" | "search" | "profile" | "bookmarks">("home");
+  const [saved, setSaved] = useState(false);
 
   const startY = useRef<number | null>(null);
-  const lastY = useRef<number | null>(null);
-  const startTime = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const current = news[index];
 
   /* ---------------- FETCH NEWS ---------------- */
 
@@ -43,53 +37,32 @@ export default function Home() {
       .catch(() => setLoading(false));
   }, [category]);
 
-  /* ---------------- SWIPE HANDLERS (OVERLAY) ---------------- */
+  /* ---------------- BOOKMARK STATE ---------------- */
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startY.current = e.touches[0].clientY;
-    lastY.current = startY.current;
-    startTime.current = Date.now();
-    if (cardRef.current) cardRef.current.style.transition = "none";
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!startY.current || !cardRef.current) return;
-    const y = e.touches[0].clientY;
-    const diff = y - startY.current;
-    lastY.current = y;
-    cardRef.current.style.transform = `translateY(${diff}px)`;
-  };
-
-  const handleTouchEnd = () => {
-    if (!startY.current || !lastY.current || !startTime.current || !cardRef.current) return;
-
-    const diff = lastY.current - startY.current;
-    const velocity = Math.abs(diff / (Date.now() - startTime.current));
-
-    // UP → next
-    if (
-      diff < 0 &&
-      index < news.length - 1 &&
-      (Math.abs(diff) > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD)
-    ) {
-      navigator.vibrate?.(8);
-      setIndex((i) => i + 1);
+  useEffect(() => {
+    if (current?.id) {
+      setSaved(isBookmarked(current.id));
     }
+  }, [current?.id]);
 
-    // DOWN → previous
-    else if (diff > 0 && index > 0 && Math.abs(diff) > SWIPE_THRESHOLD) {
-      navigator.vibrate?.(8);
+  /* ---------------- SWIPE ---------------- */
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    startY.current = e.touches[0].clientY;
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!startY.current) return;
+    const diff = e.changedTouches[0].clientY - startY.current;
+
+    if (diff < -SWIPE_THRESHOLD && index < news.length - 1) {
+      setIndex((i) => i + 1);
+    } else if (diff > SWIPE_THRESHOLD && index > 0) {
       setIndex((i) => i - 1);
     }
 
-    cardRef.current.style.transition =
-      `transform ${SNAP_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-    cardRef.current.style.transform = "translateY(0)";
-
-    startY.current = lastY.current = startTime.current = null;
+    startY.current = null;
   };
-
-  /* ---------------- RENDER ---------------- */
 
   return (
     <main className="h-screen bg-gray-100 dark:bg-black">
@@ -98,56 +71,68 @@ export default function Home() {
         onChange={(c) => {
           setCategory(c);
           setIndex(0);
-          setNav("home");
         }}
       />
 
-      {/* CLIP AREA */}
+      {/* CONTENT AREA */}
       <div
         style={{
-          height: `calc(100vh - ${TOP_BAR_HEIGHT}px - ${BOTTOM_BAR_HEIGHT}px)`,
-          overflow: "hidden",
+          height: `calc(100vh - ${TOP_BAR_HEIGHT + BOTTOM_BAR_HEIGHT + ACTION_BAR_HEIGHT}px)`,
         }}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
       >
-        <div className="relative h-full">
-          {/* GESTURE OVERLAY (captures all swipes) */}
-          {nav === "home" && (
-            <div
-              className="absolute inset-0 z-10"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            />
+        <div ref={cardRef} className="h-full">
+          {loading || !current ? (
+            <div className="h-full flex items-center justify-center text-gray-400">
+              Loading…
+            </div>
+          ) : (
+            <NewsCard {...current} />
           )}
-
-          {/* CARD LAYER */}
-          <div ref={cardRef} className="h-full will-change-transform">
-            {nav === "home" &&
-              (loading || !news[index] ? (
-                <NewsCardSkeleton />
-              ) : (
-                <NewsCard {...news[index]} />
-              ))}
-
-            {nav === "search" && <SearchScreen />}
-            {nav === "profile" && <ProfileScreen />}
-            {nav === "bookmarks" && (
-              <BookmarksScreen onBack={() => setNav("profile")} />
-            )}
-          </div>
         </div>
       </div>
 
-      <BottomNav
-        active={nav === "bookmarks" ? "profile" : nav}
-        onHome={() => {
-          setNav("home");
-          setCategory("Bulletin-X");
-          setIndex(0);
-        }}
-        onSearch={() => setNav("search")}
-        onProfile={() => setNav("profile")}
-      />
+      {/* FIXED ACTION BAR */}
+      {current && (
+        <div
+          className="fixed left-0 right-0 bg-white dark:bg-black px-4 flex justify-between items-center"
+          style={{
+            height: ACTION_BAR_HEIGHT,
+            bottom: BOTTOM_BAR_HEIGHT,
+          }}
+        >
+          <button
+            onClick={() => window.open(current.url, "_blank")}
+            className="font-medium text-blue-600"
+          >
+            Learn more →
+          </button>
+
+          <div className="flex gap-3 text-sm">
+            <button
+              onClick={() => {
+                toggleBookmark(current);
+                setSaved(!saved);
+              }}
+            >
+              {saved ? "✅ Bookmarked" : "🔖 Bookmark"}
+            </button>
+
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(
+                `${current.headline}\n\n${current.url}`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              🔗 Share
+            </a>
+          </div>
+        </div>
+      )}
+
+      <BottomNav />
     </main>
   );
 }
