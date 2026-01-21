@@ -1,5 +1,5 @@
 "use client";
-
+console.log("DEPLOY VERSION v1.8.9");
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
