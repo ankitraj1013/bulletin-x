@@ -1,15 +1,10 @@
 "use client";
 
-<<<<<<< HEAD
-import { useEffect, useState } from "react";
-import { toggleBookmark, isBookmarked } from "../utils/bookmarks";
-=======
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { toggleBookmark, isBookmarked } from "@/utils/bookmarks";
 import { saveSignal } from "@/lib/feedSignals";
->>>>>>> c822736 (Initial Bulletin-X release)
 
 interface NewsCardProps {
   id: string;
@@ -28,44 +23,15 @@ export default function NewsCard({
   summary,
   source,
   url,
-<<<<<<< HEAD
-}: any) {
-=======
   category = "general",
 }: NewsCardProps) {
->>>>>>> c822736 (Initial Bulletin-X release)
   const [saved, setSaved] = useState(false);
+  const viewStart = useRef<number>(0);
+
+  /* ---------------- INITIALIZE ---------------- */
 
   useEffect(() => {
     setSaved(isBookmarked(id));
-<<<<<<< HEAD
-  }, [id]);
-
-  /* ---------------- SHARE (BULLETPROOF) ---------------- */
-
-  const handleShare = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Try native share first
-    if (navigator.share) {
-      e.preventDefault(); // stop link navigation
-      navigator
-        .share({
-          title: headline,
-          text: summary,
-          url,
-        })
-        .catch(() => {
-          // user cancelled → fallback to link
-          window.open(
-            `https://wa.me/?text=${encodeURIComponent(
-              `${headline}\n\n${url}`
-            )}`,
-            "_blank"
-          );
-        });
-    }
-    // else → let browser open link normally
-  };
-=======
     viewStart.current = Date.now();
 
     return () => {
@@ -78,90 +44,37 @@ export default function NewsCard({
       });
     };
   }, [id, category, source]);
->>>>>>> c822736 (Initial Bulletin-X release)
+
+  /* ---------------- BOOKMARK ---------------- */
 
   const handleBookmark = () => {
     toggleBookmark({ id, image, headline, summary, source, url });
     setSaved(isBookmarked(id));
   };
 
+  /* ---------------- WHATSAPP SHARE ---------------- */
+
   const handleWhatsAppShare = () => {
     if (!url) return;
+
     const safeUrl = url.startsWith("http") ? url : `https://${url}`;
     const text = encodeURIComponent(`${headline}\n\n${safeUrl}`);
+
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
+  /* ---------------- READ MORE ---------------- */
+
   const handleOpen = () => {
     if (!url) return;
+
     const safeUrl = url.startsWith("http") ? url : `https://${url}`;
     window.open(safeUrl, "_blank");
   };
 
+  /* ---------------- RENDER ---------------- */
+
   return (
-<<<<<<< HEAD
-    <div className="h-full flex flex-col bg-white dark:bg-black">
-      {/* CONTENT (SWIPE AREA) */}
-      <div className="flex-1 px-4 py-3">
-        <div className="h-56 mb-3">
-          <img
-            src={image}
-            alt="news"
-            className="h-full w-full object-cover"
-          />
-        </div>
-
-        <h2 className="font-bold text-lg mb-3">
-          {headline}
-        </h2>
-
-        <p className="text-gray-700 dark:text-gray-300">
-          {summary}
-        </p>
-
-        <p className="text-xs text-gray-500 mt-3">
-          Source: {source}
-        </p>
-      </div>
-
-      {/* ACTION BLOCK (NO SWIPE HERE) */}
-      <div className="border-t px-4 py-3 flex justify-between items-center">
-        <button
-          onClick={() => window.open(url, "_blank")}
-          className="font-medium"
-        >
-          Learn more →
-        </button>
-
-        <div className="flex gap-4 text-sm">
-          <button
-            onClick={() => {
-              toggleBookmark({
-                id,
-                image,
-                headline,
-                summary,
-                source,
-                url,
-              });
-              setSaved(!saved);
-            }}
-          >
-            {saved ? "✅ Bookmarked" : "🔖 Bookmark"}
-          </button>
-
-          {/* 🔥 GUARANTEED SHARE */}
-          <a
-            href={`https://wa.me/?text=${encodeURIComponent(
-              `${headline}\n\n${url}`
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleShare}
-          >
-            🔗 Share
-          </a>
-=======
     <div className="h-full w-full flex flex-col bg-zinc-900 rounded-2xl shadow-xl overflow-hidden">
 
       {/* IMAGE */}
@@ -170,7 +83,6 @@ export default function NewsCard({
           src={image}
           alt={headline}
           fill
-          priority={false}
           placeholder="blur"
           blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnIGZpbGw9JyMxMTEyMTQnLz48L3N2Zz4="
           className="object-cover transition-opacity duration-500"
@@ -189,12 +101,14 @@ export default function NewsCard({
           {summary}
         </p>
 
-        <p className="text-xs text-zinc-500 mt-4 uppercase">
+        <p className="text-xs text-zinc-500 mt-4 uppercase tracking-wide">
           {source}
         </p>
 
+        {/* ACTION ROW */}
         <div className="mt-auto pt-5 flex justify-between items-center">
 
+          {/* READ MORE */}
           <button
             onClick={handleOpen}
             className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition"
@@ -204,18 +118,25 @@ export default function NewsCard({
 
           <div className="flex items-center gap-5">
 
-            {/* Animated Bookmark */}
+            {/* BOOKMARK */}
             <button
               onClick={handleBookmark}
               className="transition-transform duration-200 active:scale-90"
             >
               {saved ? (
-                <BookmarkCheck size={22} className="text-indigo-500 scale-110 transition" />
+                <BookmarkCheck
+                  size={22}
+                  className="text-indigo-500 scale-110 transition"
+                />
               ) : (
-                <Bookmark size={22} className="text-zinc-300 hover:text-white transition" />
+                <Bookmark
+                  size={22}
+                  className="text-zinc-300 hover:text-white transition"
+                />
               )}
             </button>
 
+            {/* OFFICIAL WHATSAPP CIRCLE LOGO */}
             <button
   onClick={handleWhatsAppShare}
   className="transition transform hover:scale-110"
@@ -232,7 +153,6 @@ export default function NewsCard({
 </button>
 
           </div>
->>>>>>> c822736 (Initial Bulletin-X release)
         </div>
 
       </div>
