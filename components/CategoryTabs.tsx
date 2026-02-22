@@ -17,9 +17,8 @@ type Props = {
 
 export default function CategoryTabs({ active, onChange }: Props) {
   return (
-    <div className="sticky top-0 z-50 backdrop-blur-xl bg-black/60 border-b border-zinc-800">
-      <div className="flex overflow-x-auto gap-3 px-4 py-3 scrollbar-hide">
-
+    <div className="h-14 sticky top-0 z-40 bg-black border-b border-zinc-800">
+      <div className="flex items-center h-full overflow-x-auto gap-3 px-4">
         {categories.map((cat) => {
           const isActive = active === cat;
 
@@ -27,19 +26,17 @@ export default function CategoryTabs({ active, onChange }: Props) {
             <button
               key={cat}
               onClick={() => onChange(cat)}
-              className={`whitespace-nowrap text-sm font-medium px-4 py-1.5 rounded-full transition-all duration-300
+              className={`px-4 py-1.5 rounded-full text-sm transition-all duration-200 whitespace-nowrap
                 ${
                   isActive
                     ? "bg-indigo-500/20 text-indigo-400"
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-                }
-              `}
+                }`}
             >
               {cat}
             </button>
           );
         })}
-
       </div>
     </div>
   );
