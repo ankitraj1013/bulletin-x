@@ -1,14 +1,18 @@
-const withPWA = require("next-pwa")({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === "development",
-});
-
 /** @type {import('next').NextConfig} */
-module.exports = withPWA({
+const nextConfig = {
   reactStrictMode: true,
 
-  // ✅ REQUIRED for Next.js 16 when webpack config exists
-  turbopack: {},
-});
+  // Allow localhost + LAN access in dev
+  allowedDevOrigins: ["localhost", "10.15.118.6"],
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**", // allow all HTTPS image sources (news aggregator safe)
+      },
+    ],
+  },
+};
+
+module.exports = nextConfig;

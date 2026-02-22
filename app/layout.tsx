@@ -1,11 +1,25 @@
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-export const metadata = {
-  title: "Bulletin-X",
-  description: "Short, fast and reliable news",
-  manifest: "/manifest.json",
-  themeColor: "#000000",
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: {
+    default: "Bulletin-X",
+    template: "%s | Bulletin-X",
+  },
+  description: "Short, fast and reliable swipe-based news platform.",
 };
+
+export function generateViewport(): Viewport {
+  return {
+    themeColor: "#000000",
+  };
+}
 
 export default function RootLayout({
   children,
@@ -14,7 +28,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gray-100 dark:bg-black">
+      <body
+        className={`${inter.className} min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-900 text-white antialiased`}
+      >
         {children}
       </body>
     </html>

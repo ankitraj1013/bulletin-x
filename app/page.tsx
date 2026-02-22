@@ -1,141 +1,177 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import NewsCard from "../components/NewsCard";
-import NewsCardSkeleton from "../components/NewsCardSkeleton";
-import CategoryTabs from "../components/CategoryTabs";
-import BottomNav from "../components/BottomNav";
-import SearchScreen from "../components/SearchScreen";
-import ProfileScreen from "../components/ProfileScreen";
-import BookmarksScreen from "../components/BookmarksScreen";
+import NewsCard from "@/components/NewsCard";
+import NewsCardSkeleton from "@/components/NewsCardSkeleton";
+import CategoryTabs from "@/components/CategoryTabs";
+import BottomNav from "@/components/BottomNav";
+import SearchScreen from "@/components/SearchScreen";
+import ProfileScreen from "@/components/ProfileScreen";
+import BookmarksScreen from "@/components/BookmarksScreen";
 
-const TOP_BAR_HEIGHT = 56;
-const BOTTOM_BAR_HEIGHT = 56;
-
-// Inshorts-style swipe tuning
-const SWIPE_THRESHOLD = 60;
-const VELOCITY_THRESHOLD = 0.35;
-const SNAP_DURATION = 180;
+const SWIPE_THRESHOLD = 70;
+const VELOCITY_THRESHOLD = 0.4;
+const SNAP_DURATION = 280;
 
 export default function Home() {
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState("Bulletin-X");
   const [index, setIndex] = useState(0);
-  const [nav, setNav] = useState<"home" | "search" | "profile" | "bookmarks">("home");
+  const [nav, setNav] =
+    useState<"home" | "search" | "profile" | "bookmarks">("home");
 
   const startY = useRef<number | null>(null);
   const lastY = useRef<number | null>(null);
   const startTime = useRef<number | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+
+  const activeCardRef = useRef<HTMLDivElement>(null);
 
   /* ---------------- FETCH NEWS ---------------- */
 
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/news?category=${encodeURIComponent(category)}`)
-      .then((res) => res.json())
-      .then((data) => {
+    const fetchNews = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(
+          `/api/news?category=${encodeURIComponent(category)}`
+        );
+        const data = await res.json();
         setNews(Array.isArray(data) ? data : []);
         setIndex(0);
+      } catch (err) {
+        console.error(err);
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    };
+
+    fetchNews();
   }, [category]);
 
-  /* ---------------- SWIPE HANDLERS (OVERLAY) ---------------- */
+  /* ---------------- PRELOAD NEXT IMAGE ---------------- */
+
+  useEffect(() => {
+    if (news[index + 1]?.image) {
+      const img = new Image();
+      img.src = news[index + 1].image;
+    }
+  }, [index, news]);
+
+  /* ---------------- SWIPE LOGIC ---------------- */
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
     lastY.current = startY.current;
     startTime.current = Date.now();
-    if (cardRef.current) cardRef.current.style.transition = "none";
+
+    if (activeCardRef.current) {
+      activeCardRef.current.style.transition = "none";
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!startY.current || !cardRef.current) return;
-    const y = e.touches[0].clientY;
-    const diff = y - startY.current;
-    lastY.current = y;
-    cardRef.current.style.transform = `translateY(${diff}px)`;
+    if (!startY.current || !activeCardRef.current) return;
+
+    const diff = e.touches[0].clientY - startY.current;
+    lastY.current = e.touches[0].clientY;
+
+    const scale = 1 - Math.min(Math.abs(diff) / 2000, 0.05);
+
+    activeCardRef.current.style.transform =
+      `translateY(${diff}px) scale(${scale})`;
   };
 
   const handleTouchEnd = () => {
-    if (!startY.current || !lastY.current || !startTime.current || !cardRef.current) return;
+    if (
+      !startY.current ||
+      !lastY.current ||
+      !startTime.current ||
+      !activeCardRef.current
+    )
+      return;
 
     const diff = lastY.current - startY.current;
     const velocity = Math.abs(diff / (Date.now() - startTime.current));
 
-    // UP → next
     if (
       diff < 0 &&
       index < news.length - 1 &&
       (Math.abs(diff) > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD)
     ) {
-      navigator.vibrate?.(8);
+      if (navigator.vibrate) navigator.vibrate(15);
       setIndex((i) => i + 1);
-    }
-
-    // DOWN → previous
-    else if (diff > 0 && index > 0 && Math.abs(diff) > SWIPE_THRESHOLD) {
-      navigator.vibrate?.(8);
+    } else if (
+      diff > 0 &&
+      index > 0 &&
+      (Math.abs(diff) > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD)
+    ) {
+      if (navigator.vibrate) navigator.vibrate(15);
       setIndex((i) => i - 1);
     }
 
-    cardRef.current.style.transition =
-      `transform ${SNAP_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-    cardRef.current.style.transform = "translateY(0)";
+    activeCardRef.current.style.transition =
+      `transform ${SNAP_DURATION}ms cubic-bezier(0.22,1,0.36,1)`;
+    activeCardRef.current.style.transform =
+      "translateY(0) scale(1)";
 
-    startY.current = lastY.current = startTime.current = null;
+    startY.current = null;
+    lastY.current = null;
+    startTime.current = null;
   };
 
   /* ---------------- RENDER ---------------- */
 
   return (
-    <main className="h-screen bg-gray-100 dark:bg-black">
+    <main className="flex flex-col h-screen pb-24">
       <CategoryTabs
         active={category}
         onChange={(c) => {
           setCategory(c);
-          setIndex(0);
           setNav("home");
         }}
       />
 
-      {/* CLIP AREA */}
-      <div
-        style={{
-          height: `calc(100vh - ${TOP_BAR_HEIGHT}px - ${BOTTOM_BAR_HEIGHT}px)`,
-          overflow: "hidden",
-        }}
-      >
-        <div className="relative h-full">
-          {/* GESTURE OVERLAY (captures all swipes) */}
-          {nav === "home" && (
-            <div
-              className="absolute inset-0 z-10"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            />
-          )}
+      <div className="flex-1 relative overflow-hidden bg-black">
 
-          {/* CARD LAYER */}
-          <div ref={cardRef} className="h-full will-change-transform">
-            {nav === "home" &&
-              (loading || !news[index] ? (
-                <NewsCardSkeleton />
-              ) : (
-                <NewsCard {...news[index]} />
-              ))}
+        {nav === "home" && (
+          <div
+            className="relative h-full overflow-hidden"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
 
-            {nav === "search" && <SearchScreen />}
-            {nav === "profile" && <ProfileScreen />}
-            {nav === "bookmarks" && (
-              <BookmarksScreen onBack={() => setNav("profile")} />
+            {loading && <NewsCardSkeleton />}
+
+            {!loading && news[index] && (
+              <>
+                {/* PREVIEW CARD (FIXED) */}
+                {news[index + 1] && (
+                  <div className="absolute inset-0 scale-95 opacity-30 translate-y-6 pointer-events-none overflow-hidden rounded-2xl">
+                    <NewsCard {...news[index + 1]} />
+                  </div>
+                )}
+
+                {/* ACTIVE CARD (ONLY THIS MOVES) */}
+                <div
+                  ref={activeCardRef}
+                  className="relative z-10 will-change-transform"
+                >
+                  <NewsCard {...news[index]} />
+                </div>
+              </>
             )}
+
           </div>
-        </div>
+        )}
+
+        {nav === "search" && <SearchScreen />}
+        {nav === "profile" && <ProfileScreen />}
+        {nav === "bookmarks" && (
+          <BookmarksScreen onBack={() => setNav("profile")} />
+        )}
+
       </div>
 
       <BottomNav

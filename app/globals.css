@@ -1,62 +1,21 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Smooth rendering */
+html, body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
 }
-.no-scrollbar::-webkit-scrollbar {
+
+/* Hide scrollbar */
+.scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
-.no-scrollbar {
+.scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-/* ---------------- CARD ENTER ANIMATION ---------------- */
-
-@keyframes cardEnter {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.news-card-enter {
-  animation: cardEnter 0.25s ease-out;
-}
-
-/* ---------------- MOBILE POLISH ---------------- */
-
-/* Hide scrollbars */
-::-webkit-scrollbar {
-  width: 0;
-  background: transparent;
-}
-
-/* Remove blue tap highlight */
-* {
-  -webkit-tap-highlight-color: transparent;
 }
