@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import Image from "next/image";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { toggleBookmark, isBookmarked } from "@/utils/bookmarks";
@@ -16,7 +16,7 @@ interface NewsCardProps {
   category?: string;
 }
 
-export default function NewsCard({
+function NewsCardComponent({
   id,
   image,
   headline,
@@ -27,8 +27,6 @@ export default function NewsCard({
 }: NewsCardProps) {
   const [saved, setSaved] = useState(false);
   const viewStart = useRef<number>(0);
-
-  /* ---------------- INITIALIZE ---------------- */
 
   useEffect(() => {
     setSaved(isBookmarked(id));
@@ -45,14 +43,13 @@ export default function NewsCard({
     };
   }, [id, category, source]);
 
-  /* ---------------- BOOKMARK ---------------- */
-
   const handleBookmark = () => {
     toggleBookmark({ id, image, headline, summary, source, url });
     setSaved(isBookmarked(id));
+    navigator.vibrate?.(8);
   };
 
-  /* ---------------- WHATSAPP SHARE ---------------- */
+  /* ---------------- WHATSAPP SHARE ONLY ---------------- */
 
   const handleWhatsAppShare = () => {
     if (!url) return;
@@ -60,83 +57,67 @@ export default function NewsCard({
     const safeUrl = url.startsWith("http") ? url : `https://${url}`;
     const text = encodeURIComponent(`${headline}\n\n${safeUrl}`);
 
-    window.open(`https://wa.me/?text=${text}`, "_blank");
-  };
+    const whatsappLink = `https://wa.me/?text=${text}`;
 
-  /* ---------------- READ MORE ---------------- */
+    window.open(whatsappLink, "_blank");
+  };
 
   const handleOpen = () => {
-    if (!url) return;
-
-    const safeUrl = url.startsWith("http") ? url : `https://${url}`;
-    window.open(safeUrl, "_blank");
+    const safeUrl = url?.startsWith("http") ? url : `https://${url}`;
+    window.open(safeUrl, "_blank", "noopener,noreferrer");
   };
 
-  /* ---------------- RENDER ---------------- */
-
   return (
-    <div className="h-full w-full flex flex-col bg-zinc-900 rounded-2xl shadow-xl overflow-hidden">
+    <div className="relative h-full w-full bg-black text-white overflow-hidden">
 
-      {/* IMAGE */}
-      <div className="relative h-64 w-full">
+      {/* Background Image */}
+      <div className="absolute inset-0">
         <Image
           src={image}
           alt={headline}
           fill
-          placeholder="blur"
-          blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnIGZpbGw9JyMxMTEyMTQnLz48L3N2Zz4="
-          className="object-cover transition-opacity duration-500"
+          loading="eager"
+          className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" />
       </div>
 
-      {/* CONTENT */}
-      <div className="flex-1 flex flex-col px-6 py-5">
+      {/* Content */}
+      <div className="relative z-10 flex flex-col h-full px-6 pt-16 pb-28">
 
-        <h2 className="text-xl font-semibold mb-3 line-clamp-3">
-          {headline}
-        </h2>
-
-        <p className="text-zinc-300 text-sm line-clamp-5">
-          {summary}
-        </p>
-
-        <p className="text-xs text-zinc-500 mt-4 uppercase tracking-wide">
+        <p className="text-xs tracking-widest uppercase text-gray-400 mb-4">
           {source}
         </p>
 
-        {/* ACTION ROW */}
-        <div className="mt-auto pt-5 flex justify-between items-center">
+        <h1 className="text-2xl font-bold leading-tight mb-4">
+          {headline}
+        </h1>
 
-          {/* READ MORE */}
+        <p className="text-sm text-gray-300 leading-relaxed line-clamp-6">
+          {summary}
+        </p>
+
+        <div className="mt-auto flex justify-between items-center pt-6">
+
           <button
             onClick={handleOpen}
-            className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition"
+            className="text-sm font-semibold text-indigo-400"
           >
-            Read more →
+            Read Full Story →
           </button>
 
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-6">
 
             {/* BOOKMARK */}
-            <button
-              onClick={handleBookmark}
-              className="transition-transform duration-200 active:scale-90"
-            >
+            <button onClick={handleBookmark}>
               {saved ? (
-                <BookmarkCheck
-                  size={22}
-                  className="text-indigo-500 scale-110 transition"
-                />
+                <BookmarkCheck size={24} className="text-indigo-500" />
               ) : (
-                <Bookmark
-                  size={22}
-                  className="text-zinc-300 hover:text-white transition"
-                />
+                <Bookmark size={24} className="text-gray-300" />
               )}
             </button>
 
-            {/* OFFICIAL WHATSAPP CIRCLE LOGO */}
+            {/* WHATSAPP ICON (Latest Flat Style) */}
             <button
   onClick={handleWhatsAppShare}
   className="transition transform hover:scale-110"
@@ -154,8 +135,9 @@ export default function NewsCard({
 
           </div>
         </div>
-
       </div>
     </div>
   );
 }
+
+export default memo(NewsCardComponent);

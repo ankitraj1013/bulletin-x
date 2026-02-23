@@ -1,58 +1,84 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import NewsCard from "@/components/NewsCard";
 import NewsCardSkeleton from "@/components/NewsCardSkeleton";
 import CategoryTabs from "@/components/CategoryTabs";
 import BottomNav from "@/components/BottomNav";
 import SearchScreen from "@/components/SearchScreen";
 import ProfileScreen from "@/components/ProfileScreen";
+import Onboarding from "@/components/Onboarding";
 
-const SWIPE_THRESHOLD = 70;
-const VELOCITY_THRESHOLD = 0.4;
-const SNAP_DURATION = 280;
+const SWIPE_THRESHOLD = 80;
+const VELOCITY_THRESHOLD = 0.45;
+const SNAP_DURATION = 260;
 
 export default function Home() {
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [category, setCategory] = useState("Bulletin-X");
   const [index, setIndex] = useState(0);
   const [nav, setNav] =
     useState<"home" | "search" | "profile">("home");
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const startY = useRef<number | null>(null);
   const lastY = useRef<number | null>(null);
   const startTime = useRef<number | null>(null);
   const activeCardRef = useRef<HTMLDivElement>(null);
 
-  /* ---------------- FETCH NEWS ---------------- */
+  /* ---------------- ONBOARDING ---------------- */
 
   useEffect(() => {
-    const fetchNews = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(
-          `/api/news?category=${encodeURIComponent(category)}`
-        );
-        const data = await res.json();
-        setNews(Array.isArray(data) ? data : []);
-        setIndex(0);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (typeof window !== "undefined") {
+      const done = localStorage.getItem("bulletin_onboarding_done");
+      if (!done) setShowOnboarding(true);
+    }
+  }, []);
 
+  /* ---------------- FETCH NEWS ---------------- */
+
+  const fetchNews = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(false);
+
+      const res = await fetch(
+        `/api/news?category=${encodeURIComponent(category)}`
+      );
+
+      if (!res.ok) throw new Error("Fetch failed");
+
+      const data = await res.json();
+      setNews(Array.isArray(data) ? data : []);
+      setIndex(0);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [category]);
+
+  useEffect(() => {
     if (nav === "home") {
       fetchNews();
     }
-  }, [category, nav]);
+  }, [fetchNews, nav]);
 
-  /* ---------------- SWIPE HANDLERS ---------------- */
+  /* ---------------- PRELOAD NEXT IMAGE ---------------- */
+
+  useEffect(() => {
+    if (!news[index + 1]?.image) return;
+
+    const img = new Image();
+    img.src = news[index + 1].image;
+  }, [index, news]);
+
+  /* ---------------- SWIPE ENGINE ---------------- */
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (nav !== "home") return;
+    if (nav !== "home" || loading) return;
 
     startY.current = e.touches[0].clientY;
     lastY.current = startY.current;
@@ -64,11 +90,10 @@ export default function Home() {
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!startY.current || !activeCardRef.current || nav !== "home") return;
+    if (!startY.current || !activeCardRef.current) return;
 
     const diff = e.touches[0].clientY - startY.current;
     lastY.current = e.touches[0].clientY;
-
     activeCardRef.current.style.transform = `translateY(${diff}px)`;
   };
 
@@ -77,30 +102,37 @@ export default function Home() {
       !startY.current ||
       !lastY.current ||
       !startTime.current ||
-      !activeCardRef.current ||
-      nav !== "home"
+      !activeCardRef.current
     )
       return;
 
     const diff = lastY.current - startY.current;
-    const velocity = Math.abs(diff / (Date.now() - startTime.current));
+    const duration = Date.now() - startTime.current;
+    const velocity = Math.abs(diff / duration);
+
+    let newIndex = index;
 
     if (
       diff < 0 &&
       index < news.length - 1 &&
-      (Math.abs(diff) > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD)
+      (Math.abs(diff) > SWIPE_THRESHOLD ||
+        velocity > VELOCITY_THRESHOLD)
     ) {
-      navigator.vibrate?.(15);
-      setIndex((i) => i + 1);
+      newIndex = index + 1;
     }
 
     if (
       diff > 0 &&
       index > 0 &&
-      (Math.abs(diff) > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD)
+      (Math.abs(diff) > SWIPE_THRESHOLD ||
+        velocity > VELOCITY_THRESHOLD)
     ) {
-      navigator.vibrate?.(15);
-      setIndex((i) => i - 1);
+      newIndex = index - 1;
+    }
+
+    if (newIndex !== index) {
+      navigator.vibrate?.(8);
+      setIndex(newIndex);
     }
 
     activeCardRef.current.style.transition =
@@ -112,43 +144,52 @@ export default function Home() {
     startTime.current = null;
   };
 
-  /* ---------------- RENDER ---------------- */
-
   return (
-    <main className="h-screen flex flex-col bg-black">
+    <main className="h-screen flex flex-col bg-black text-white overflow-hidden">
 
-      {/* TOP CATEGORY TABS */}
+      {showOnboarding && (
+        <Onboarding onFinish={() => setShowOnboarding(false)} />
+      )}
+
       {nav === "home" && (
         <CategoryTabs
           active={category}
-          onChange={(c) => {
-            setCategory(c);
-            setIndex(0);
-          }}
+          onChange={(c) => setCategory(c)}
         />
       )}
 
-      {/* CONTENT AREA */}
-      <div
-        className="relative overflow-hidden"
-        style={{
-          height:
-            nav === "home"
-              ? "calc(100vh - 56px - 64px)"
-              : "calc(100vh - 64px)",
-        }}
-      >
+      <div className="relative flex-1 overflow-hidden pb-24">
+
         {nav === "home" && (
           <div
-            className="relative h-full overflow-hidden"
+            className="relative h-full overflow-hidden touch-none"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
             {loading && <NewsCardSkeleton />}
 
-            {!loading && news[index] && (
-              <div ref={activeCardRef} className="relative h-full">
+            {error && (
+              <div className="flex items-center justify-center h-full text-center p-6">
+                <div>
+                  <h2 className="text-lg font-semibold mb-2">
+                    Failed to load news
+                  </h2>
+                  <button
+                    onClick={fetchNews}
+                    className="px-4 py-2 bg-white text-black rounded-full"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!loading && !error && news[index] && (
+              <div
+                ref={activeCardRef}
+                className="relative h-full will-change-transform transform-gpu"
+              >
                 <NewsCard {...news[index]} />
               </div>
             )}
@@ -159,7 +200,6 @@ export default function Home() {
         {nav === "profile" && <ProfileScreen />}
       </div>
 
-      {/* BOTTOM NAV */}
       <BottomNav
         active={nav}
         onHome={() => setNav("home")}

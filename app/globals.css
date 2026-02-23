@@ -6,11 +6,24 @@
 html, body {
   height: 100%;
 }
-
+/* Hide horizontal scrollbar */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 body {
   margin: 0;
 }
-
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 /* Hide scrollbar */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
